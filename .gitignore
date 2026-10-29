@@ -1,0 +1,30 @@
+# 采集产物与中间数据一律不入库（体积大且含个人信息、文件名或密钥材料）
+*.lime
+*.img
+*.bin
+*.sha256
+*.jsonl
+*.tsv
+*.log
+dump.log
+hits.txt
+chunk-tree.txt
+chunkmap.txt
+find-root*.txt
+leaves*.txt
+dry-*.txt
+selftest/
+sample/
+decoded/
+thumbs/
+private/
+rescue*/
+
+# 编译产物
+tools/keyscan
+keyscan
+
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
