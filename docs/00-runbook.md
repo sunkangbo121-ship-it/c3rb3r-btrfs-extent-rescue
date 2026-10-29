@@ -135,7 +135,7 @@ ssh USER@NAS_IP 'sudo btrfs subvolume list /volume1'          # → SUBVOL_ID
 ssh USER@NAS_IP 'sudo btrfs subvolume find-new /volume1/homes GEN_LOW | grep read-me3.txt | head'
 ```
 
-`find-new` 每行带 `gen N`。最早一封勒索信的 generation 就是 `CUTOFF`（本案约 18141074）。比 `CUTOFF` 小的 extent 一定是攻击前写入的。
+`find-new` 每行带 `gen N`。取最早一封勒索信的 generation 再往前留一点余量作为 `CUTOFF`（本案勒索信约 18141074，实际用 18141060；两者生成的任务清单逐字节相同）。加密器可能在写第一封勒索信之前就开始改文件，所以不要把勒索信的 generation 当成精确下限；之后由「读回内容 ≠ 当前密文」和文件头校验兜底。
 
 ## 7. 旧 fs-tree 根恢复（`btrfs restore`）
 

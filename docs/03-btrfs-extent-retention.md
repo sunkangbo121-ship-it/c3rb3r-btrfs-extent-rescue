@@ -84,7 +84,7 @@ btrfs 内部用逻辑地址，读 LV 要先换算成物理偏移。`btrfs-debug-
 
 ### 4. 组装任务（`make_jobs2.py`）
 
-参数 `CUTOFF` 是攻击开始时的 generation（本案取第一封勒索信的 generation，约 18141074）。对每个现存 `.L0CK3D`：
+参数 `CUTOFF` 是攻击开始时的 generation（本案第一封勒索信约 18141074，留余量实际用 18141060）。对每个现存 `.L0CK3D`：
 
 1. **精确旧引用**（优先）：孤儿叶子里 `egen < CUTOFF` 的 `EXTENT_DATA`，同一 `foff` 取最新的那条。它就是攻击前「文件偏移 → extent 位置」的原样映射。
 2. **整 extent 合成引用**：当前树（以及孤儿叶子）里 `egen < CUTOFF` 的每条引用，合成为 `(foff − eoff, disk_bytenr, 0, disk_num_bytes)`——即假设这个 extent 在攻击前是从 `foff − eoff` 开始、整块被这个文件使用。对「文件顺序写入、一个 extent 只属于一个文件」的照片和视频，这个假设成立；拼接后的文件头检查和抽样完整解码用来兜住它不成立的情况。
