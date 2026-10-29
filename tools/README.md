@@ -75,3 +75,24 @@
 
 - soimy 的 `decrypt_copy.py`：版权归原作者，不收录。本案的一行改动见 [docs/02](../docs/02-memory-capture-and-keyscan.md#五如果你扫到了soimy-解密器的一行改动)。
 - 任何样本、真实镜像、页脚记录、文件清单或恢复结果。
+
+## 流式大文件与合并
+
+| 脚本 | 作用 | 只读保证 |
+|---|---|---|
+| `extract_big.py` | `extract_jobs.py` 的流式版，按 32 MiB 分块处理 >1.5 GiB 的文件，内存占用固定；`MIN_PARTIAL_COVER` 环境变量控制部分恢复的写出门槛 | 只读裸设备和现存文件；先写 `.tmp` 再改名，目标已存在则跳过 |
+| `merge_exec.py` | 按合并计划用 `FICLONE`（reflink）把每个文件的最佳来源克隆到最终目录，不占额外空间；JPEG/PNG 可选校验结尾标记 | 源文件不动；目标 `O_EXCL` |
+
+## 视频修复（`video/`，详见 [docs/06](../docs/06-video-repair.md)）
+
+| 脚本 | 运行位置 | 作用 |
+|---|---|---|
+| `movsamples.py` | 任意 | 解析 `moov` 样本表（`stsz`/`stco`/`co64`/`stsc`/`stts`/`stss`），逐样本做 NAL 长度框架校验；算坏帧时间段、加密段对应的时间段 |
+| `videofix.py` | NAS（root） | 由 `mdat` 头推出 `moov` 偏移和长度，在已知 extent 附近的裸设备上搜 `be32(size)+"moov"`，补回尾部；只保留逐帧校验通过的最长后缀 |
+| `headerfix.py` | NAS（root） | 头部整段丢失时找 `moov`（文件尾或裸设备上的 `moov`+`mvhd`），用明文区样本校验（≥80%）后重建 `ftyp`/`free`/`mdat` 头并把 `moov` 接到文件尾；临时目录用 `WORK_TMP` |
+| `gapfill.py` | NAS（root） | 逐帧在裸设备上找回中段数据（4 KiB 对齐 + 单 NAL 长度前缀作检索键）。**本案无收获**，留作参考 |
+| `finish_videos2.py` | macOS | 拉回视频 → 逐轨道完整解码 → 跳过坏段无损拼接（失败落在加密段内则整段跳过）→ 再校验 → 推回 NAS；SSH 目标用 `NAS_SSH` 环境变量 |
+| `checkvideo.swift` | macOS | 每条轨道单独 `AVAssetReader` 完整解码，报告每条轨道读到的位置和失败点（按 track ID，避免两条音频轨互相覆盖） |
+| `splicevideo.swift` / `trimvideo.swift` | macOS | `AVMutableComposition` + passthrough 导出：按时间段无损拼接 / 截取，不重新编码 |
+
+编译：`swiftc -O -o checkvideo checkvideo.swift`（另外两个同理）。

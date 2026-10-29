@@ -4,22 +4,23 @@
 
 A de-identified post-incident record of a C3RB3R ransomware case on an Xpenology (bare-metal DSM 7.2.1) NAS. **Memory key recovery failed** — the encryptor had exited about 27 hours before response — but **most of the encrypted photo library was recovered without any key**, by exploiting how btrfs copy-on-write handles in-place partial overwrites.
 
-> **Status: interim.** The recovery run was still in progress when this was written. Final numbers go into the TODO table in [docs/04](docs/04-results-and-limits.md).
+> **Status: complete.** After merging and de-duplication, **17,893 of 24,142 files (74.1%), ~274 of 375 GiB (~73%)** were recovered without any key. Details in [docs/04](docs/04-results-and-limits.md); video repair in [docs/06](docs/06-video-repair.md).
 
 ## The idea in one paragraph
 
 C3RB3R encrypts large files only partially and in place: mode `0x26` encrypts the first 1 MiB, mode `0x25` (pct=10) encrypts three 4% segments. On btrfs, the rewritten ranges go to new extents, but the untouched plaintext ranges keep referencing the **original** extent. btrfs frees an extent only when no byte of it is referenced, so the whole original extent — **including the bytes that are now encrypted in the live file** — stays allocated and intact (a "bookend" extent). Walk the current fs tree, take the references whose extent generation predates the attack, synthesize the full original extent (`file offset = foff − eoff`, extent byte 0, `disk_num_bytes`), map logical to physical via the chunk tree, read the encrypted ranges back from the raw LV and splice them with the live plaintext.
 
-## Numbers (interim)
+## Numbers (final)
 
 | | |
 |---|---|
 | Encrypted files in the target folder | 24,142 (375 GiB): `0x26` 10,220 · `0x25` 7,197 · `0x24` 6,725 |
 | RAM scan | 15.86 GiB via `/proc/kcore`, ~4.5e9 candidates, self-tested, 4 min 45 s → **NO_MATCH** |
-| Bookend extent recovery, first 6,217 files | **6,082 complete (39.6 GiB)**, 9 partial, 123 failed (121 of them `0x24`), 3 deferred (>1.5 GB) |
-| By mode | `0x26` 4,918 / 4,920 · `0x25` 1,108 complete + 9 partial · `0x24` 56 / 177 |
+| Bookend extent recovery | `0x26` **10,200 / 10,220** complete · `0x25` **7,071 / 7,197** complete + 102 partial · `0x24` 117 / 6,725 |
+| Partial videos | lost `moov` recovered from the raw device, frames validated by NAL length framing, damaged seconds cut losslessly: **47 fully playable** (median ~98% duration kept); 35 replaced by Synology Photos' low-res transcode |
+| Final (merged, de-duplicated) | **17,893 / 24,142 files, ~274 GiB**; the 6,249 lost are almost all ≤1 MiB whole-file-encrypted files |
 | `btrfs restore` from old fs-tree roots | 2,442 files / 19.9 GiB with valid headers |
-| Validation | header check on every file; 40 random images fully decoded by macOS ImageIO (40/40) and visually inspected. **Format-level only — not original-SHA equality.** |
+| Validation | header check on every file; 40 random images fully decoded (40/40); 8 sampled complete videos and every repaired video fully decoded track by track. **Format-level only — not original-SHA equality.** |
 
 ## Verified recovery paths
 
